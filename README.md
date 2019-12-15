@@ -1,3 +1,3 @@
-##chiptoolkit
+## chiptoolkit
 
-- Tools for analyzing chip-seq like data
+Tools for analyzing chip-seq like data
