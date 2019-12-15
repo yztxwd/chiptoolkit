@@ -22,7 +22,7 @@ def main():
     specie = sys.argv[1]
 
     hdf5 = h5py.File(filename, 'a')
-    chrkey = hdf5['%s' %specie].keys()[0]
+    chrkey = list(hdf5['%s' %specie].keys())[0]
     print("Sources of %s in %s" %(specie, filename))
     for source in hdf5['%s/%s' %(specie, chrkey)].keys():
         print("\t%s" % source)
