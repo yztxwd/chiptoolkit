@@ -143,6 +143,7 @@ def get_coverage(hdf5, sources, region, blacklist):
         matrix_average.append(array_average)
     # Return average matrix
     matrix_average = np.vstack(matrix_average).astype('float64')    
+    return matrix_average
 
 # load region in root processor, broadcast to workers
 if rank == 0:
@@ -195,13 +196,13 @@ hdf5.close()
 
 # Write the gathered matrix to output 
 if rank == 0:
-    df_average = pd.DataFrame(matrix, index=sources)
+    df_average = pd.DataFrame(recvbuf, index=sources)
     ## save matrix
     df_average.to_csv(dirname+'/'+option.prefix+'_average.matrix', header=False, index=True, sep='\t')
     ## Plot composite plot
     plt.figure(figsize=(12,12))
     for index in range(len(sources)):
-        plt.plot(collen-int(collen/2), matrix[index, :], label=sources[index])
+        plt.plot(np.arange(collen)-int(collen/2), recvbuf[index, :], label=sources[index])
     plt.legend(fontsize=15)
     plt.xlabel("Distance to Midpoint of Region", fontsize=20)
     plt.ylabel("Average of Coverage Per Region", fontsize=20)
