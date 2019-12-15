@@ -55,6 +55,11 @@ comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 size = comm.Get_size()
 
+# make directory
+dirname = option.outDir
+if (not os.path.exists(dirname)):
+    os.makedirs(dirname)
+
 if num < size:
     raise Exception("Number of processors > Number of sources will cause unstability of program, please reduce core number")
     sys.exit(1)
@@ -69,11 +74,8 @@ def get_coverage(hdf5, sources, region, blacklist):
         print("Use blacklist to exclude region")
         blacklist = nad.numpyArrayDict(specie=option.specie).create_dict_fromDF(blacklist)
 
-    # make directory
-    dirname = option.outDir
-    if (not os.path.exists(dirname)):
-        os.makedirs(dirname)
-
+    # process each source, store the average array
+    matrix_average = []
     for source in sources:
         # ready to extract region and write to output
         ofile = open(dirname+'/'+option.prefix+'_%s.csv' %(source), 'w')
@@ -114,29 +116,33 @@ def get_coverage(hdf5, sources, region, blacklist):
         plt.savefig(dirname+'/'+option.prefix+'_%s_heatmap.png' %(source), dpi=100)
 
         # store the average of coverage
-        matrix_average = np.average(matrix, axis=0)
+        array_average = np.average(matrix, axis=0)
         with open(dirname+'/'+option.prefix+'_%s_average.csv' %(source), 'w') as f:
             writer = csv.writer(f, lineterminator='\n', delimiter='\t')
             writer.writerow(["#Source: %s" %(source)])
             writer.writerow(["#Extract region: %s" %(option.region)])
             writer.writerow(["#Warning: There will be some regions disgarded because of region index out of bound"])
             writer.writerow(["#Error ID will be listed at the end of file"])
-            writer.writerow(matrix_average)
+            writer.writerow(array_average)
             f.write("#Error id: ")
             writer.writerow(error)
 
         # plot composite plot
         ## First smooth the array
-        matrix_average = np.convolve(matrix_average, np.ones((20,))/20, mode='valid')
+        array_average = np.convolve(array_average, np.ones((20,))/20, mode='valid')
         ## Then plot the composite plot
         plt.figure(figsize=(12,12))
-        plt.plot(np.arange(matrix_average.size)-int(matrix_average.size/2), matrix_average, label=source)
+        plt.plot(np.arange(array_average.size)-int(array_average.size/2), array_average, label=source)
         plt.legend(fontsize=15)
         plt.xlabel("Distance to Midpoint", fontsize=20)
         plt.ylabel("Average of Coverage Per Region", fontsize=20)
         plt.title("Composite Plot\n %s in %s" %(source, option.region), fontsize=25, pad=10)
         plt.tick_params(axis='both', labelsize=15)
         plt.savefig(dirname+'/'+option.prefix+'_%s_composite.png' %(source), dpi=100)
+        ## Append to the average matrix
+        matrix_average.append(array_average)
+    # Return average matrix
+    matrix_average = np.vstack(matrix_average).astype('float64')    
 
 # load region in root processor, broadcast to workers
 if rank == 0:
@@ -169,10 +175,40 @@ interval = comm.bcast(interval, root=0)
 ## Open HDF5 object for each processor
 hdf5 = nad.hdf5(option.hdf5, specie=option.specie, mpi=True, mpi_comm=MPI.COMM_WORLD)
 ## Process each source
-get_coverage(hdf5, sources[interval[rank]:interval[rank+1]], region, blacklist)
-
-comm.Barrier()
+matrix = get_coverage(hdf5, sources[interval[rank]:interval[rank+1]], region, blacklist)
+collen = matrix.shape[1]
+## Determine gather parameters
+if rank == 0:
+    recvbuf = np.empty([len(sources), collen], dtype='float64')
+    split_sizes = []
+    for  i in range(len(interval)-1):
+        split_sizes = np.append(split_sizes, interval[i+1]-interval[i])
+    split_sizes_output = split_sizes * collen
+    displacement_output = np.insert(np.cumsum(split_sizes_output), 0, 0)[0:-1]
+else:
+    split_sizes_output = None
+    displacement_output = None
+    recvbuf = None
+## Send average matrix to main processor
+comm.Gatherv(sendbuf=matrix, recvbuf=[recvbuf, split_sizes_output, displacement_output, MPI.DOUBLE], root=0)
 hdf5.close()
+
+# Write the gathered matrix to output 
+if rank == 0:
+    df_average = pd.DataFrame(matrix, index=sources)
+    ## save matrix
+    df_average.to_csv(dirname+'/'+option.prefix+'_average.matrix', header=False, index=True, sep='\t')
+    ## Plot composite plot
+    plt.figure(figsize=(12,12))
+    for index in range(len(sources)):
+        plt.plot(collen-int(collen/2), matrix[index, :], label=sources[index])
+    plt.legend(fontsize=15)
+    plt.xlabel("Distance to Midpoint of Region", fontsize=20)
+    plt.ylabel("Average of Coverage Per Region", fontsize=20)
+    plt.title("Composite Plot in %s" %(option.region), fontsize=25, pad=10)
+    plt.tick_params(axis='both', labelsize=15)
+    plt.savefig(dirname+'/'+option.prefix+'_composite.png', dpi=100)
+
 
 
 
