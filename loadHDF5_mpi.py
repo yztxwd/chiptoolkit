@@ -65,6 +65,15 @@ if num < size:
     sys.exit(1)
 
 # Global function definition
+## set outlier to a smaller value
+def shrink_outlier(data, m=1.5):
+    Q3 = np.percentile(data, 75)
+    Q1 = np.percentile(data, 25)
+    IQR = Q3 - Q1
+    data[data < (Q1 - m * IQR)] = (Q1 - m * IQR)
+    data[data > (Q3 + m * IQR)] = (Q3 + m * IQR)
+    return data
+
 def get_coverage(hdf5, sources, region, blacklist):
     # get current working directory
     cwd = os.getcwd()+"/"
@@ -108,7 +117,7 @@ def get_coverage(hdf5, sources, region, blacklist):
         # plot heatmap according to matrix
         matrix = np.vstack(matrix)
         plt.figure(figsize=(12,12))
-        plt.imshow(np.log(matrix+1), cmap='hot', interpolation='nearest', aspect='auto')
+        plt.imshow(np.log(shrink_outlier(matrix)+1), cmap='hot', interpolation='nearest', aspect='auto')
         print(np.log(matrix+1).shape)
         plt.colorbar()
         plt.axis('off')
