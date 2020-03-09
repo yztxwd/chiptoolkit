@@ -1,6 +1,7 @@
 #!/usr/bin/python python3.6
 #coding = utf-8
 
+import re
 import pandas as pd
 import numpy as np
 import h5py
@@ -19,9 +20,6 @@ chrKeys = {
     "yeast": [
         "chrI", "chrII", "chrIII", "chrIV", "chrIX", "chrM", "chrV", "chrVI", "chrVII",
         "chrVIII", "chrX", "chrXI", "chrXII", "chrXIII", "chrXIV", "chrXV", "chrXVI"
-    ],
-    "drosophila": [
-        "chr2L", "chr2R", "chr3L", "chr3R", "chr4", "chrM", "chrX", "chrY"
     ]
 }
 
@@ -34,9 +32,6 @@ chrSize = {
     "yeast": [
         230218, 813184, 316620, 1531933, 439888, 85779, 576874, 270161, 1090940, 562643, 
         745751, 666816, 1078177, 924431, 784333, 1091291, 948066
-    ],
-    "drosophila": [
-        23513712, 25286936, 28110227, 32079331, 1348131, 19524, 23542271, 3667352
     ]
 }
 
@@ -67,7 +62,7 @@ class numpyArrayDict(object):
 
     def generate_dict(self):
         """
-        Generate a dictionary containing coverage on mouse genome, [datatype: float32]
+        Generate a dictionary containing coverage on mouse genome, [datatype: float16]
         output dictionary:
         key1: numpy.array[1,23,4,5,6,...]
         key2: numpy.array[1,26,7,8,9,...]
@@ -77,12 +72,13 @@ class numpyArrayDict(object):
         for i in self.chrKeys[self.specie]:
             self.store[i] = np.zeros(self.chrSize[self.specie][self.chrKeys[self.specie].index(i)], dtype='float32')
 
-    def fill_dict(self, chunk, addHeader=False):
+    def fill_dict(self, chunk):
         """
         Fill in values in store according to the dataframe chunk
         """
-        if addHeader:
-            chunk.columns = ['chr', 'start', 'end', 'depth']
+        # Standardize the chromosome name to avoid ambiguous names of the same chromosome, i.e., chr1, Chr1, 1...
+        chunk['chr'] = chunk.apply(lambda row: "chr" + re.sub(r"chr", "", row['chr'], flags=re.I), axis=1)
+        
         def func(chr, start, end, depth):
             try:
                 self.store[chr][(start-1):(end)] += depth
@@ -93,7 +89,7 @@ class numpyArrayDict(object):
         vfunc = np.vectorize(func, otypes=[int])
         vfunc(chunk['chr'].values, chunk['start'].values, chunk['end'].values, chunk['depth'].values)
 
-    def create_dict_fromfile(self, filename, addHeader=True, chunksize=10**6):
+    def create_dict_fromfile(self, filename, chunksize=10**6):
         """
         Create dictionary according to the input file
         :param filename:
@@ -101,24 +97,27 @@ class numpyArrayDict(object):
         :return: self
         """
         self.generate_dict()
-        self.add_dict_fromfile(filename, addHeader=addHeader, chunksize=chunksize)
+        chunks = pd.read_csv(filename, header=None, sep='\t', chunksize=chunksize, comment="#", usecols=[0,1,2,3], 
+                names=['chr', 'start', 'end', 'depth'], dtype={'chr':str, 'start':int, 'end':int, 'depth':float})
+        for chunk in chunks:
+            self.fill_dict(chunk)
         return self
 
-    def create_dict_fromDF(self, dataframe, addHeader=False):
+    def create_dict_fromDF(self, dataframe):
         """
         Create dictionary according to the input pandas dataframe
         :param dataframe:
         format: chr start end depth
         :return: self
         """
-        self.generate_dict()
-        self.fill_dict(dataframe, addHeader=addHeader)
-        return self
+        # format dataframe
+        dataframe.columns = ['chr', 'start', 'end', 'depth']
+        dataframe.astype({'chr':str, 'start':int, 'end':int, 'depth':float})
 
-    def add_dict_fromfile(self, filename, addHeader=True, chunksize=10**6):
-        chunks = pd.read_csv(filename, header=None, sep='\t', chunksize=chunksize, comment="#", usecols=[0,1,2,3])
-        for chunk in chunks:
-            self.fill_dict(chunk, addHeader=addHeader)
+        # dump into numpy array
+        self.generate_dict()
+        self.fill_dict(dataframe)
+        return self
 
     def get_dict(self):
         """
@@ -155,7 +154,7 @@ class numpyArrayDict(object):
         :param hdf5:
         :return:
         """
-        file = h5py.File(hdf5, 'a')
+        file = h5py.File(hdf5)
 
         # check if all keys exist in hdf file, create if not
         if not (self.specie in file.keys()):
@@ -168,15 +167,18 @@ class numpyArrayDict(object):
         for i in self.chrKeys[self.specie]:
             file['/%s/%s' %(self.specie, i)].create_dataset(sourceName, data=self.store[i], compression='gzip')
 
+    # deprecated
+    def add_dict_fromfile(self, filename, addHeader=True, chunksize=10**6):
+        chunks = pd.read_csv(filename, header=None, sep='\t', chunksize=chunksize, comment="#", usecols=[0,1,2,3])
+        for chunk in chunks:
+            self.fill_dict(chunk, addHeader=addHeader)
+
 class hdf5(object):
     """
     handle hdf5 file containing numpy array dictionary
     """
-    def __init__(self, hdf5, specie='mouse', mpi=False, mpi_comm=None):
-        if mpi:
-            self.hdf5 = h5py.File(hdf5, 'a', driver='mpio', comm=mpi_comm)
-        else:
-            self.hdf5 = h5py.File(hdf5, 'a')
+    def __init__(self, hdf5, specie='mouse'):
+        self.hdf5 = h5py.File(hdf5)
         self.specie = specie
         self.chrKeys = chrKeys
         self.chrSize = chrSize
