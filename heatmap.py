@@ -75,5 +75,6 @@ if scientificNotation:
     axs[1].ticklabel_format(style='sci', axis='y', scilimits=(0,0))
 
 # Save figure
+fig.suptitle(prefix)
 fig.savefig(prefix + ".png", dpi=100)
 
