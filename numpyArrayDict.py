@@ -177,8 +177,11 @@ class hdf5(object):
     """
     handle hdf5 file containing numpy array dictionary
     """
-    def __init__(self, hdf5, specie='mouse'):
-        self.hdf5 = h5py.File(hdf5)
+    def __init__(self, hdf5, specie='mouse', mpi=False, mpi_comm=None):
+        if mpi:
+            self.hdf5 = h5py.File(hdf5, 'a', driver='mpio', comm=mpi_comm)
+        else:
+            self.hdf5 = h5py.File(hdf5, 'a')
         self.specie = specie
         self.chrKeys = chrKeys
         self.chrSize = chrSize
