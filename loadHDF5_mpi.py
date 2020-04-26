@@ -48,7 +48,7 @@ parser.add_option('-p', '--prefix',dest='prefix',default='loadHDF5',help='output
 parser.add_option('-o','--outDir',dest='outDir',default='.',help='output directory')
 option, argument = parser.parse_args()
 
-sources = option.source.split(",")
+sources = [s.strip() for s in option.source.split(",")]
 num = len(sources)
 
 comm = MPI.COMM_WORLD
