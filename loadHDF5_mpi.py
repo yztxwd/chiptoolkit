@@ -100,10 +100,14 @@ def get_coverage(hdf5, sources, region, blacklist):
         writer.writerow(["#Extract region: %s" %(option.region)])
         writer.writerow(["#Warning: There will be some regions disgarded because of region index out of bound"])
         writer.writerow(["#Error ID will be listed at the end of file"])
+        size = region.loc['end'] - region.loc['start'] + 1
         for i in region.index:
             try:
                 if (not blacklist is None and sum(blacklist.get_range(region.loc[i,'chr'], region.loc[i,'start'], region.loc[i,'end']))==0) or (blacklist is None):
                     piece = hdf5.get_slice(source, region.loc[i,'chr'], region.loc[i,'start'], region.loc[i,'end'])
+                    if piece.size != size:
+                        print("Skip region with length != the first region, ID: %s" %(region.loc[i, 'ID']))
+                        continue
                     if region.loc[i,'strand'] == "-":
                         piece = piece[::-1]
                     ofile.write("%s\t" %(region.loc[i, 'ID']))
