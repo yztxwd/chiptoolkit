@@ -112,7 +112,7 @@ class numpyArrayDict(object):
         """
         # format dataframe
         dataframe.columns = ['chr', 'start', 'end', 'depth']
-        dataframe.astype({'chr':str, 'start':int, 'end':int, 'depth':float})
+        dataframe = dataframe.astype({'chr':str, 'start':int, 'end':int, 'depth':float})
 
         # dump into numpy array
         self.generate_dict()
