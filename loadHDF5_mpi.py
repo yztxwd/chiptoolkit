@@ -100,7 +100,7 @@ def get_coverage(hdf5, sources, region, blacklist):
         writer.writerow(["#Extract region: %s" %(option.region)])
         writer.writerow(["#Warning: There will be some regions disgarded because of region index out of bound"])
         writer.writerow(["#Error ID will be listed at the end of file"])
-        size = region.iloc[0, 'end'] - region.loc[0, 'start'] + 1
+        size = region.loc[0, 'end'] - region.loc[0, 'start'] + 1
         for i in region.index:
             try:
                 if (not blacklist is None and sum(blacklist.get_range(region.loc[i,'chr'], region.loc[i,'start'], region.loc[i,'end']))==0) or (blacklist is None):
