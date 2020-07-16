@@ -3,11 +3,11 @@ import numpy as np
 import pandas as pd
 import h5py
 import matplotlib
-matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from mpi4py import MPI
 from optparse import OptionParser, IndentedHelpFormatter
-sys.path.append('/data2/yztxwd/scripts/python/Module')
+from collections import defaultdict
+#sys.path.append('/data2/yztxwd/scripts/python/Module')
 import numpyArrayDict as nad
 
 
@@ -21,7 +21,7 @@ MPI version of loadHDF5.py
 Load the coverage of sources in the given regions
 
 Example:
-    $ mpiexec -n 4 python loadHDF5.py --specie mouse --database cache.h5 --source zero,one
+    $ mpiexec -n 4 python loadHDF5_mpi.py --specie mouse --database cache.h5 --source zero,one
                                     --region tss.region --prefix test -o ./
 
 Format Requirements:
@@ -44,6 +44,7 @@ parser.add_option('-c','--specie',dest='specie',help='species')
 parser.add_option('-d','--database',dest='hdf5',help='hdf5 saving midpoint/coverage information')
 parser.add_option('-s','--source',dest='source',help='source index in hdf5')
 parser.add_option('-b','--blacklist',dest='blacklist',help='blacklist region')
+parser.add_option('-t','--percentile',dest='percentile',action='store_true',default=False,help="convert to percentile")
 parser.add_option('-p', '--prefix',dest='prefix',default='loadHDF5',help='output file prefix')
 parser.add_option('-o','--outDir',dest='outDir',default='.',help='output directory')
 option, argument = parser.parse_args()
@@ -57,8 +58,9 @@ size = comm.Get_size()
 
 # make directory
 dirname = option.outDir
-if (not os.path.exists(dirname)):
-    os.makedirs(dirname)
+if rank == 0:
+    if (not os.path.exists(dirname)):
+        os.makedirs(dirname)
 
 if num < size:
     raise Exception("Number of processors > Number of sources will cause unstability of program, please reduce core number")
@@ -75,6 +77,9 @@ def shrink_outlier(data, m=3):
     data[idx1] = (Q1 - m * IQR)
     data[idx2] = (Q3 + m * IQR)
     return data
+
+def toPercentile(a, dic):
+    return np.vectorize(dic.__getitem__)(a)
 
 def get_coverage(hdf5, sources, region, blacklist):
     # get current working directory
@@ -94,6 +99,27 @@ def get_coverage(hdf5, sources, region, blacklist):
         error = []
         isFirst = True
 
+        # if need percentile coverage, load uniq value percentile here
+        if option.percentile:
+            ## load uniq values and counts
+            genome_size = 0
+            storeCounts = defaultdict(lambda: 0)
+            for chr in nad.chrKeys[option.specie]:
+                array = hdf5.load_chr(source, chr)
+                genome_size += array.size
+                uniq, counts = np.unique(array, return_counts=True)
+                for index in range(len(uniq)):
+                    storeCounts[uniq[index]] += counts[index]
+            ## convert to percentile
+            storeRank = {}
+            startRank = 0
+            endRank = 0
+            for key, value in storeCounts.items():
+                startRank = endRank + 1
+                endRank += value
+                rank = (startRank + endRank) / 2
+                storeRank[key] = rank / genome_size       
+
         # extract coverage per region, store them, skip the region if overlap with blacklist
         matrix = []
         writer.writerow(["#Source: %s" %(source)])
@@ -110,6 +136,9 @@ def get_coverage(hdf5, sources, region, blacklist):
                         continue
                     if region.loc[i,'strand'] == "-":
                         piece = piece[::-1]
+                    ## convert to percentile if needed
+                    if option.percentile:
+                        piece = toPercentile(piece, storeRank)
                     ofile.write("%s\t" %(region.loc[i, 'ID']))
                     writer.writerow(piece)
                     matrix.append(piece)

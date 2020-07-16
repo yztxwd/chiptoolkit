@@ -215,6 +215,9 @@ class hdf5(object):
         returnClass.store = store
         return returnClass
 
+    def load_chr(self, sourceName, chr):
+        return self.hdf5['/%s/%s/%s' %(self.specie, chr, sourceName)][:]
+
     def list_source(self):
         """
         List names of all source in hdf5 file
