@@ -168,10 +168,11 @@ class numpyArrayDict(object):
             file['/%s/%s' %(self.specie, i)].create_dataset(sourceName, data=self.store[i], compression='gzip')
 
     # deprecated
-    def add_dict_fromfile(self, filename, addHeader=True, chunksize=10**6):
-        chunks = pd.read_csv(filename, header=None, sep='\t', chunksize=chunksize, comment="#", usecols=[0,1,2,3])
+    def add_dict_fromfile(self, filename, chunksize=10**6):
+        chunks = pd.read_csv(filename, header=None, sep='\t', chunksize=chunksize, comment="#", usecols=[0,1,2,3],
+            names=['chr', 'start', 'end', 'depth'], dtype={'chr':str, 'start':int, 'end':int, 'depth':float})
         for chunk in chunks:
-            self.fill_dict(chunk, addHeader=addHeader)
+            self.fill_dict(chunk)
 
 class hdf5(object):
     """
