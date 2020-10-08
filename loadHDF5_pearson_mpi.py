@@ -164,9 +164,12 @@ def heatmap(data, row_labels, col_labels, ax=None,
 
 # Load region in main processor, broadcast to workers
 if rank == 0:
-    region = pd.read_csv(option.region, header=None, sep="\t", comment='#', usecols=[0,1,2,3,4])
-    region = region.astype({1:'int',2:'int'})
-    region.columns = ['chr', 'start', 'end', 'strand', 'ID']
+    if option.region:
+        region = pd.read_csv(option.region, header=None, sep="\t", comment='#', usecols=[0,1,2,3,4])
+        region = region.astype({1:'int',2:'int'})
+        region.columns = ['chr', 'start', 'end', 'strand', 'ID']
+    else:
+        region = None
 else:
     region = None
 region = comm.bcast(region, root=0)
