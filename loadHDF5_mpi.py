@@ -150,7 +150,7 @@ def get_coverage(hdf5, sources, region, blacklist):
         print("Error ID:\n%s" %(str(error)))
 
         # plot heatmap according to matrix
-        matrix = np.vstack(matrix)
+        matrix = np.sort(np.vstack(matrix), axis=0)[::-1]
         plt.figure(figsize=(12,12))
         plt.imshow(np.log((matrix)+1), cmap='hot', interpolation='nearest', aspect='auto')
         print(np.log(matrix+1).shape)
