@@ -122,6 +122,7 @@ def get_coverage(hdf5, sources, region, blacklist):
 
         # extract coverage per region, store them, skip the region if overlap with blacklist
         matrix = []
+        ids = []
         writer.writerow(["#Source: %s" %(source)])
         writer.writerow(["#Extract region: %s" %(option.region)])
         writer.writerow(["#Warning: There will be some regions disgarded because of region index out of bound"])
@@ -142,6 +143,7 @@ def get_coverage(hdf5, sources, region, blacklist):
                     ofile.write("%s\t" %(region.loc[i, 'ID']))
                     writer.writerow(piece)
                     matrix.append(piece)
+                    ids.append(region.loc[i, 'ID'])
             except Exception as e:
                 error.append(region.loc[i, 'ID'])
         ofile.write("#Error id: ")
@@ -150,7 +152,9 @@ def get_coverage(hdf5, sources, region, blacklist):
         print("Error ID:\n%s" %(str(error)))
 
         # plot heatmap according to matrix
-        matrix = np.sort(np.vstack(matrix), axis=0)[::-1]
+        sort_index = np.argsort(np.sum(matrix, axis=1))[::-1]
+        matrix = np.vstack(matrix)[sort_index]   # sort by rowSum
+        ids = ids[sort_index]
         plt.figure(figsize=(12,12))
         plt.imshow(np.log((matrix)+1), cmap='hot', interpolation='nearest', aspect='auto')
         print(np.log(matrix+1).shape)
@@ -158,6 +162,11 @@ def get_coverage(hdf5, sources, region, blacklist):
         plt.axis('off')
         plt.title("Coverage Heatmap\n%s in %s" %(source, option.region), fontsize=25, pad=10)
         plt.savefig(dirname+'/'+option.prefix+'_%s_heatmap.png' %(source), dpi=100)
+
+        # save the id of each line in matrix
+        with open(dirname + '/' + option.prefix + '_%s_id.txt' %(source). 'w') as f:
+            for id in ids:
+                f.write("%s\n" %id)
 
         # store the average of coverage
         array_average = np.average(matrix, axis=0)
