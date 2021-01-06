@@ -154,17 +154,16 @@ def get_coverage(hdf5, sources, region, blacklist):
         # plot heatmap according to matrix
         sort_index = np.argsort(np.sum(matrix, axis=1))[::-1]
         matrix = np.vstack(matrix)[sort_index]   # sort by rowSum
-        ids = ids[sort_index]
+        ids = np.array(ids)[sort_index]
         plt.figure(figsize=(12,12))
-        plt.imshow(np.log((matrix)+1), cmap='hot', interpolation='nearest', aspect='auto')
-        print(np.log(matrix+1).shape)
+        plt.imshow(matrix, cmap='hot', interpolation='nearest', aspect='auto')
         plt.colorbar()
         plt.axis('off')
         plt.title("Coverage Heatmap\n%s in %s" %(source, option.region), fontsize=25, pad=10)
         plt.savefig(dirname+'/'+option.prefix+'_%s_heatmap.png' %(source), dpi=100)
 
         # save the id of each line in matrix
-        with open(dirname + '/' + option.prefix + '_%s_id.txt' %(source). 'w') as f:
+        with open(dirname + '/' + option.prefix + '_%s_id.txt' %(source), 'w') as f:
             for id in ids:
                 f.write("%s\n" %id)
 
