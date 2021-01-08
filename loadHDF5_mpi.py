@@ -44,7 +44,7 @@ parser.add_option('-c','--specie',dest='specie',help='species')
 parser.add_option('-d','--database',dest='hdf5',help='hdf5 saving midpoint/coverage information')
 parser.add_option('-s','--source',dest='source',help='source index in hdf5')
 parser.add_option('-b','--blacklist',dest='blacklist',help='blacklist region')
-parser.add_option('-n','--normalize',dest='normalize',default=None,help="Method for normalization")
+parser.add_option('-n','--normalize',dest='normalize',default=None,help="Method for normalization: percentile, normalize, None(default)")
 parser.add_option('-p', '--prefix',dest='prefix',default='loadHDF5',help='output file prefix')
 parser.add_option('-o','--outDir',dest='outDir',default='.',help='output directory')
 option, argument = parser.parse_args()
@@ -120,8 +120,8 @@ def get_coverage(hdf5, sources, region, blacklist):
                 rank = (startRank + endRank) / 2
                 storeRank[key] = rank / genome_size
         elif option.normalize=='zscore':
-            zmean = hdf.get_mean(source)
-            zstd = np.sqrt(hdf.get_var(source))
+            zmean = hdf5.get_mean(source)
+            zstd = np.sqrt(hdf5.get_var(source))
 
         # extract coverage per region, store them, skip the region if overlap with blacklist
         matrix = []
