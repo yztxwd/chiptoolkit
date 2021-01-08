@@ -161,7 +161,12 @@ def get_coverage(hdf5, sources, region, blacklist):
         matrix = np.vstack(matrix)[sort_index]   # sort by rowSum
         ids = np.array(ids)[sort_index]
         plt.figure(figsize=(12,12))
-        plt.imshow(matrix, cmap='hot', interpolation='nearest', aspect='auto')
+        if option.normalize == 'percentile':
+            plt.imshow(matrix, cmap='hot', interpolation='nearest', aspect='auto', vmin=0, vmax=1)
+        elif option.normalize == 'zscore':
+            plt.imshow(matrix, cmap='hot', interpolation='nearest', aspect='auto', vmin=-1.96, vmax=1.96)
+        else:
+            plt.imshow(matrix, cmap='hot', interpolation='nearest', aspect='auto')
         plt.colorbar()
         plt.axis('off')
         plt.title("Coverage Heatmap\n%s in %s" %(source, option.region), fontsize=25, pad=10)
