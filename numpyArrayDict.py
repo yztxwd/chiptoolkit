@@ -172,6 +172,22 @@ class numpyArrayDict(object):
             ds = file['/%s/%s' %(self.specie, i)].create_dataset(sourceName, data=self.store[i], compression='gzip')
             ds.create('depth', self.depth)  # create sequencing depth attribute
 
+        # store mean and variance for future usage
+        sumAll = 0
+        for i in self.chrKeys[self.specie]:
+            sumAll += np.sum(self.store[i])
+        mean = sumAll/sum(chrSize[self.specie])
+
+        sumVar = 0
+        for i in self.chrKeys[self.specie]:
+            sumVar += np.sum(np.square(self.store[i]-mean))
+        var = sumVar/sum(chrSize[self.specie])        
+
+        for i in self.chrKeys[self.specie]:
+            ds = file['/%s/%s/%s' %(self.specie, i, sourceName)]
+            ds.create('mean', mean)  # mean attribute
+            ds.create('var', var) # variance attribute
+
     # deprecated
     def add_dict_fromfile(self, filename, chunksize=10**6):
         chunks = pd.read_csv(filename, header=None, sep='\t', chunksize=chunksize, comment="#", usecols=[0,1,2,3],
