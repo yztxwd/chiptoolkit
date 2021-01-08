@@ -216,6 +216,27 @@ class hdf5(object):
         returnClass.store = store
         return returnClass
 
+    def get_mean(self, sourceName):
+        """
+        Return mean across the genome
+        """
+        sumAll = 0
+        for i in self.chrKeys[self.specie]:
+            sumAll += np.sum(self.hdf5['%s/%s/%s' %(self.specie, i, sourceName)])
+        
+        return sumAll/sum(chrSize[self.specie])
+
+    def get_var(self, sourceName):
+        """
+        Return variance across the genome
+        """
+        sumVar = 0
+        mean = self.get_mean(sourceName)
+        for i in self.chrKeys[self.specie]:
+            sumVar += np.sum(np.square(self.hdf5['%s/%s/%s' %(self.specie, i, sourceName)]-mean))
+        
+        return sumVar/sum(chrSize[self.specie])
+
     def load_chr(self, sourceName, chr):
         return self.hdf5['/%s/%s/%s' %(self.specie, chr, sourceName)][:]
 

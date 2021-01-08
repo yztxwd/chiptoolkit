@@ -44,7 +44,7 @@ parser.add_option('-c','--specie',dest='specie',help='species')
 parser.add_option('-d','--database',dest='hdf5',help='hdf5 saving midpoint/coverage information')
 parser.add_option('-s','--source',dest='source',help='source index in hdf5')
 parser.add_option('-b','--blacklist',dest='blacklist',help='blacklist region')
-parser.add_option('-t','--percentile',dest='percentile',action='store_true',default=False,help="convert to percentile")
+parser.add_option('-n','--normalize',dest='normalize',default=None,help="Method for normalization")
 parser.add_option('-p', '--prefix',dest='prefix',default='loadHDF5',help='output file prefix')
 parser.add_option('-o','--outDir',dest='outDir',default='.',help='output directory')
 option, argument = parser.parse_args()
@@ -100,7 +100,7 @@ def get_coverage(hdf5, sources, region, blacklist):
         isFirst = True
 
         # if need percentile coverage, load uniq value percentile here
-        if option.percentile:
+        if option.normalize == 'percentile':
             ## load uniq values and counts
             genome_size = 0
             storeCounts = defaultdict(lambda: 0)
@@ -118,7 +118,10 @@ def get_coverage(hdf5, sources, region, blacklist):
                 startRank = endRank + 1
                 endRank += value
                 rank = (startRank + endRank) / 2
-                storeRank[key] = rank / genome_size       
+                storeRank[key] = rank / genome_size
+        elif option.normalize=='zscore':
+            zmean = hdf.get_mean(source)
+            zstd = np.sqrt(hdf.get_var(source))
 
         # extract coverage per region, store them, skip the region if overlap with blacklist
         matrix = []
@@ -138,8 +141,10 @@ def get_coverage(hdf5, sources, region, blacklist):
                     if region.loc[i,'strand'] == "-":
                         piece = piece[::-1]
                     ## convert to percentile if needed
-                    if option.percentile:
+                    if option.normalize=='percentile':
                         piece = toPercentile(piece, storeRank)
+                    elif option.normalize=='zscore':
+                        piece = (piece-zmean)/zstd
                     ofile.write("%s\t" %(region.loc[i, 'ID']))
                     writer.writerow(piece)
                     matrix.append(piece)
