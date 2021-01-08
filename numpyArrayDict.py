@@ -7,7 +7,7 @@ import numpy as np
 import h5py
 
 description="""
-    This module is used to store genome wide information on each base pair (i.e., depth), it employs a 0-based coordinate system (which is the default of numpy)
+    This module is used to store genome wide information on each base pair (i.e., per base coverage), it employs a 0-based coordinate system (which is the default of numpy)
     When dump into or load from this module, you should use coordinate under 1-based coordinate system to ensure it works in the right way
 """
 
