@@ -51,6 +51,7 @@ class numpyArrayDict(object):
         self.specie = specie
         self.chrKeys = chrKeys
         self.chrSize = chrSize
+        self.depth = 0
 
     def normalize_dict(self, depth):
         """
@@ -88,6 +89,7 @@ class numpyArrayDict(object):
                 return 0
         vfunc = np.vectorize(func, otypes=[int])
         vfunc(chunk['chr'].values, chunk['start'].values, chunk['end'].values, chunk['depth'].values)
+        self.depth += chunk.shape[0]
 
     def create_dict_fromfile(self, filename, chunksize=10**6):
         """
@@ -97,6 +99,7 @@ class numpyArrayDict(object):
         :return: self
         """
         self.generate_dict()
+        self.depth = 0
         chunks = pd.read_csv(filename, header=None, sep='\t', chunksize=chunksize, comment="#", usecols=[0,1,2,3], 
                 names=['chr', 'start', 'end', 'depth'], dtype={'chr':str, 'start':int, 'end':int, 'depth':float})
         for chunk in chunks:
@@ -110,6 +113,7 @@ class numpyArrayDict(object):
         format: chr start end depth
         :return: self
         """
+        self.depth = 0
         # format dataframe
         dataframe.columns = ['chr', 'start', 'end', 'depth']
         dataframe = dataframe.astype({'chr':str, 'start':int, 'end':int, 'depth':float})
@@ -165,7 +169,8 @@ class numpyArrayDict(object):
 
         # dump numpy array dictionary into hdf5
         for i in self.chrKeys[self.specie]:
-            file['/%s/%s' %(self.specie, i)].create_dataset(sourceName, data=self.store[i], compression='gzip')
+            ds = file['/%s/%s' %(self.specie, i)].create_dataset(sourceName, data=self.store[i], compression='gzip')
+            ds.create('depth', self.depth)  # create sequencing depth attribute
 
     # deprecated
     def add_dict_fromfile(self, filename, chunksize=10**6):
