@@ -260,8 +260,8 @@ class hdf5(object):
         """
         # check if dataset has variance attribute, otherwise compute
         ds = self.hdf5['%s/%s/%s' %(self.specie, self.chrKeys[self.specie][0], sourceName)]
-        if ds.attrs.__contains__('variance'):
-            return ds.attrs.__contains__('variance')
+        if ds.attrs.__contains__('var'):
+            return ds.attrs.get('var')
         else:
             sumVar = 0
             mean = self.get_mean(sourceName)
@@ -269,7 +269,7 @@ class hdf5(object):
                 sumVar += np.sum(np.square(self.hdf5['%s/%s/%s' %(self.specie, i, sourceName)]-mean))
             var = sumVar/sum(chrSize[self.specie])
 
-            ds.attrs.create('variance', var)
+            ds.attrs.create('var', var)
             return var
 
     def load_chr(self, sourceName, chr):
