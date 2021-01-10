@@ -238,6 +238,9 @@ interval = comm.bcast(interval, root=0)
 ## Open HDF5 object for each processor
 hdf5 = nad.hdf5(option.hdf5, specie=option.specie, mpi=True, mpi_comm=MPI.COMM_WORLD)
 ## Process each source
+for i in sources:   # get mean and var attribute first to make sure every attribute exists
+    hdf5.get_mean(i)
+    hdf5.get_var(i)
 matrix = get_coverage(hdf5, sources[interval[rank]:interval[rank+1]], region, blacklist)
 collen = matrix.shape[1]
 ## Determine gather parameters
