@@ -241,22 +241,36 @@ class hdf5(object):
         """
         Return mean across the genome
         """
-        sumAll = 0
-        for i in self.chrKeys[self.specie]:
-            sumAll += np.sum(self.hdf5['%s/%s/%s' %(self.specie, i, sourceName)])
-        
-        return sumAll/sum(chrSize[self.specie])
+        # check if the source has mean attribute, otherwise compute and store
+        ds = self.hdf5['%s/%s/%s' %(self.specie, self.chrKeys[self.specie][0], sourceName)]
+        if ds.attrs.__contains__('mean'):
+            return ds.attrs.get('mean')
+        else:
+            sumAll = 0
+            for i in self.chrKeys[self.specie]:
+                sumAll += np.sum(self.hdf5['%s/%s/%s' %(self.specie, i, sourceName)])
+            mean = sumAll/sum(chrSize[self.specie])
+
+            ds.attrs.create('mean', mean)
+            return mean
 
     def get_var(self, sourceName):
         """
         Return variance across the genome
         """
-        sumVar = 0
-        mean = self.get_mean(sourceName)
-        for i in self.chrKeys[self.specie]:
-            sumVar += np.sum(np.square(self.hdf5['%s/%s/%s' %(self.specie, i, sourceName)]-mean))
-        
-        return sumVar/sum(chrSize[self.specie])
+        # check if dataset has variance attribute, otherwise compute
+        ds = self.hdf5['%s/%s/%s' %(self.specie, self.chrKeys[self.specie][0], sourceName)]
+        if ds.attrs.__contains__('variance'):
+            return ds.attrs.__contains__('variance')
+        else:
+            sumVar = 0
+            mean = self.get_mean(sourceName)
+            for i in self.chrKeys[self.specie]:
+                sumVar += np.sum(np.square(self.hdf5['%s/%s/%s' %(self.specie, i, sourceName)]-mean))
+            var = sumVar/sum(chrSize[self.specie])
+
+            ds.attrs.create('variance', var)
+            return var
 
     def load_chr(self, sourceName, chr):
         return self.hdf5['/%s/%s/%s' %(self.specie, chr, sourceName)][:]
