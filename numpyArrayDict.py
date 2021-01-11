@@ -170,7 +170,7 @@ class numpyArrayDict(object):
         # dump numpy array dictionary into hdf5
         for i in self.chrKeys[self.specie]:
             ds = file['/%s/%s' %(self.specie, i)].create_dataset(sourceName, data=self.store[i], compression='gzip')
-            ds.create('depth', self.depth)  # create sequencing depth attribute
+            ds.attrs.create('depth', self.depth)  # create sequencing depth attribute
 
         # store mean and variance for future usage
         sumAll = 0
@@ -185,8 +185,8 @@ class numpyArrayDict(object):
 
         for i in self.chrKeys[self.specie]:
             ds = file['/%s/%s/%s' %(self.specie, i, sourceName)]
-            ds.create('mean', mean)  # mean attribute
-            ds.create('var', var) # variance attribute
+            ds.attrs.create('mean', mean)  # mean attribute
+            ds.attrs.create('var', var) # variance attribute
 
     # deprecated
     def add_dict_fromfile(self, filename, chunksize=10**6):

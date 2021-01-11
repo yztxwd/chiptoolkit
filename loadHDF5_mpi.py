@@ -45,6 +45,7 @@ parser.add_option('-d','--database',dest='hdf5',help='hdf5 saving midpoint/cover
 parser.add_option('-s','--source',dest='source',help='source index in hdf5')
 parser.add_option('-b','--blacklist',dest='blacklist',help='blacklist region')
 parser.add_option('-n','--normalize',dest='normalize',default=None,help="Method for normalization: percentile, normalize, None(default)")
+parser.add_option('--sort',dest='sort',default=False,action='store_true',help='Whether to sort regions by sum of coverage')
 parser.add_option('-p', '--prefix',dest='prefix',default='loadHDF5',help='output file prefix')
 parser.add_option('-o','--outDir',dest='outDir',default='.',help='output directory')
 option, argument = parser.parse_args()
@@ -157,9 +158,12 @@ def get_coverage(hdf5, sources, region, blacklist):
         print("Error ID:\n%s" %(str(error)))
 
         # plot heatmap according to matrix
-        sort_index = np.argsort(np.sum(matrix, axis=1))[::-1]
-        matrix = np.vstack(matrix)[sort_index]   # sort by rowSum
-        ids = np.array(ids)[sort_index]
+        if option.sort:
+            sort_index = np.argsort(np.sum(matrix, axis=1))[::-1]
+            matrix = np.vstack(matrix)[sort_index]   # sort by rowSum
+            ids = np.array(ids)[sort_index]
+        else:
+            matrix = np.vstack(matrix)
         plt.figure(figsize=(12,12))
         if option.normalize == 'percentile':
             plt.imshow(matrix, cmap='hot', interpolation='nearest', aspect='auto', vmin=0, vmax=1)
