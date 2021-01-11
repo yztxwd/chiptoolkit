@@ -48,7 +48,7 @@ parser.add_option('-n','--normalize',dest='normalize',default=None,help="Method 
 parser.add_option('-p', '--prefix',dest='prefix',default='loadHDF5',help='output file prefix')
 parser.add_option('-o','--outDir',dest='outDir',default='.',help='output directory')
 parser.add_option('--sort',dest='sort',default=False,action='store_true',help='Whether to sort regions by sum of coverage (default:False)')
-parser.add_option('--figure',dest='figure',default=True,action='store_false',help='Whether to output heatmap/composite (default:True)')
+parser.add_option('--inequal',dest='inequal',default=False,action='store_true',help='Input regions are not equal in length (default:False)')
 option, argument = parser.parse_args()
 
 sources = [s.strip() for s in option.source.split(",")]
@@ -137,8 +137,8 @@ def get_coverage(hdf5, sources, region, blacklist):
             try:
                 if (not blacklist is None and sum(blacklist.get_range(region.loc[i,'chr'], region.loc[i,'start'], region.loc[i,'end']))==0) or (blacklist is None):
                     piece = hdf5.get_slice(source, region.loc[i,'chr'], region.loc[i,'start'], region.loc[i,'end'])
-                    if piece.size != size:
-                        print("Skip region with length != the first region, ID: %s" %(region.loc[i, 'ID']))
+                    if piece.size != size and not option.inequal:
+                        print("Detect region with length != the first region, ID: %s" %(region.loc[i, 'ID']))
                         continue
                     if region.loc[i,'strand'] == "-":
                         piece = piece[::-1]
@@ -158,7 +158,7 @@ def get_coverage(hdf5, sources, region, blacklist):
         ofile.close()
         print("Error ID:\n%s" %(str(error)))
 
-        if option.figure:
+        if not option.inequal:
             # plot heatmap according to matrix
             if option.sort:
                 sort_index = np.argsort(np.sum(matrix, axis=1))[::-1]
@@ -210,7 +210,7 @@ def get_coverage(hdf5, sources, region, blacklist):
             ## Append to the average matrix
             matrix_average.append(array_average)
 
-    if option.figure:
+    if not option.inequal:
         # Return average matrix
         matrix_average = np.vstack(matrix_average).astype('float64')    
         return matrix_average
@@ -251,7 +251,7 @@ hdf5 = nad.hdf5(option.hdf5, specie=option.specie, mpi=True, mpi_comm=MPI.COMM_W
 for i in sources:   # get mean and var attribute first to make sure every attribute exists
     hdf5.get_mean(i)
     hdf5.get_var(i)
-if option.figure:
+if not option.inequal:
     matrix = get_coverage(hdf5, sources[interval[rank]:interval[rank+1]], region, blacklist)
     collen = matrix.shape[1]
     ## Determine gather parameters
