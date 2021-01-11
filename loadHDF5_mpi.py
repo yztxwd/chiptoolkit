@@ -45,9 +45,10 @@ parser.add_option('-d','--database',dest='hdf5',help='hdf5 saving midpoint/cover
 parser.add_option('-s','--source',dest='source',help='source index in hdf5')
 parser.add_option('-b','--blacklist',dest='blacklist',help='blacklist region')
 parser.add_option('-n','--normalize',dest='normalize',default=None,help="Method for normalization: percentile, normalize, None(default)")
-parser.add_option('--sort',dest='sort',default=False,action='store_true',help='Whether to sort regions by sum of coverage')
 parser.add_option('-p', '--prefix',dest='prefix',default='loadHDF5',help='output file prefix')
 parser.add_option('-o','--outDir',dest='outDir',default='.',help='output directory')
+parser.add_option('--sort',dest='sort',default=False,action='store_true',help='Whether to sort regions by sum of coverage (default:False)')
+parser.add_option('--figure',dest='figure',default=True,action='store_false',help='Whether to output heatmap/composite (default:True)')
 option, argument = parser.parse_args()
 
 sources = [s.strip() for s in option.source.split(",")]
@@ -157,59 +158,64 @@ def get_coverage(hdf5, sources, region, blacklist):
         ofile.close()
         print("Error ID:\n%s" %(str(error)))
 
-        # plot heatmap according to matrix
-        if option.sort:
-            sort_index = np.argsort(np.sum(matrix, axis=1))[::-1]
-            matrix = np.vstack(matrix)[sort_index]   # sort by rowSum
-            ids = np.array(ids)[sort_index]
-        else:
-            matrix = np.vstack(matrix)
-        plt.figure(figsize=(12,12))
-        if option.normalize == 'percentile':
-            plt.imshow(matrix, cmap='hot', interpolation='nearest', aspect='auto', vmin=0, vmax=1)
-        elif option.normalize == 'zscore':
-            plt.imshow(matrix, cmap='hot', interpolation='nearest', aspect='auto', vmin=-1.96, vmax=1.96)
-        else:
-            plt.imshow(matrix, cmap='hot', interpolation='nearest', aspect='auto')
-        plt.colorbar()
-        plt.axis('off')
-        plt.title("Coverage Heatmap\n%s in %s" %(source, option.region), fontsize=25, pad=10)
-        plt.savefig(dirname+'/'+option.prefix+'_%s_heatmap.png' %(source), dpi=100)
+        if option.figure:
+            # plot heatmap according to matrix
+            if option.sort:
+                sort_index = np.argsort(np.sum(matrix, axis=1))[::-1]
+                matrix = np.vstack(matrix)[sort_index]   # sort by rowSum
+                ids = np.array(ids)[sort_index]
+            else:
+                matrix = np.vstack(matrix)
+            plt.figure(figsize=(12,12))
+            if option.normalize == 'percentile':
+                plt.imshow(matrix, cmap='hot', interpolation='nearest', aspect='auto', vmin=0, vmax=1)
+            elif option.normalize == 'zscore':
+                plt.imshow(matrix, cmap='hot', interpolation='nearest', aspect='auto', vmin=-1.96, vmax=1.96)
+            else:
+                plt.imshow(matrix, cmap='hot', interpolation='nearest', aspect='auto')
+            plt.colorbar()
+            plt.axis('off')
+            plt.title("Coverage Heatmap\n%s in %s" %(source, option.region), fontsize=25, pad=10)
+            plt.savefig(dirname+'/'+option.prefix+'_%s_heatmap.png' %(source), dpi=100)
 
-        # save the id of each line in matrix
-        with open(dirname + '/' + option.prefix + '_%s_id.txt' %(source), 'w') as f:
-            for id in ids:
-                f.write("%s\n" %id)
+            # save the id of each line in matrix
+            with open(dirname + '/' + option.prefix + '_%s_id.txt' %(source), 'w') as f:
+                for id in ids:
+                    f.write("%s\n" %id)
 
-        # store the average of coverage
-        array_average = np.average(matrix, axis=0)
-        with open(dirname+'/'+option.prefix+'_%s_average.csv' %(source), 'w') as f:
-            writer = csv.writer(f, lineterminator='\n', delimiter='\t')
-            writer.writerow(["#Source: %s" %(source)])
-            writer.writerow(["#Extract region: %s" %(option.region)])
-            writer.writerow(["#Warning: There will be some regions disgarded because of region index out of bound"])
-            writer.writerow(["#Error ID will be listed at the end of file"])
-            writer.writerow(array_average)
-            f.write("#Error id: ")
-            writer.writerow(error)
+            # store the average of coverage
+            array_average = np.average(matrix, axis=0)
+            with open(dirname+'/'+option.prefix+'_%s_average.csv' %(source), 'w') as f:
+                writer = csv.writer(f, lineterminator='\n', delimiter='\t')
+                writer.writerow(["#Source: %s" %(source)])
+                writer.writerow(["#Extract region: %s" %(option.region)])
+                writer.writerow(["#Warning: There will be some regions disgarded because of region index out of bound"])
+                writer.writerow(["#Error ID will be listed at the end of file"])
+                writer.writerow(array_average)
+                f.write("#Error id: ")
+                writer.writerow(error)
 
-        # plot composite plot
-        ## First smooth the array
-        array_average = np.convolve(array_average, np.ones((20,))/20, mode='valid')
-        ## Then plot the composite plot
-        plt.figure(figsize=(12,12))
-        plt.plot(np.arange(array_average.size)-int(array_average.size/2), array_average, label=source)
-        plt.legend(fontsize=15)
-        plt.xlabel("Distance to Midpoint", fontsize=20)
-        plt.ylabel("Average of Coverage Per Region", fontsize=20)
-        plt.title("Composite Plot\n %s in %s" %(source, option.region), fontsize=25, pad=10)
-        plt.tick_params(axis='both', labelsize=15)
-        plt.savefig(dirname+'/'+option.prefix+'_%s_composite.png' %(source), dpi=100)
-        ## Append to the average matrix
-        matrix_average.append(array_average)
-    # Return average matrix
-    matrix_average = np.vstack(matrix_average).astype('float64')    
-    return matrix_average
+            # plot composite plot
+            ## First smooth the array
+            array_average = np.convolve(array_average, np.ones((20,))/20, mode='valid')
+            ## Then plot the composite plot
+            plt.figure(figsize=(12,12))
+            plt.plot(np.arange(array_average.size)-int(array_average.size/2), array_average, label=source)
+            plt.legend(fontsize=15)
+            plt.xlabel("Distance to Midpoint", fontsize=20)
+            plt.ylabel("Average of Coverage Per Region", fontsize=20)
+            plt.title("Composite Plot\n %s in %s" %(source, option.region), fontsize=25, pad=10)
+            plt.tick_params(axis='both', labelsize=15)
+            plt.savefig(dirname+'/'+option.prefix+'_%s_composite.png' %(source), dpi=100)
+            ## Append to the average matrix
+            matrix_average.append(array_average)
+
+    if option.figure:
+        # Return average matrix
+        matrix_average = np.vstack(matrix_average).astype('float64')    
+        return matrix_average
+    else:
+        return
 
 # load region in root processor, broadcast to workers
 if rank == 0:
@@ -245,39 +251,42 @@ hdf5 = nad.hdf5(option.hdf5, specie=option.specie, mpi=True, mpi_comm=MPI.COMM_W
 for i in sources:   # get mean and var attribute first to make sure every attribute exists
     hdf5.get_mean(i)
     hdf5.get_var(i)
-matrix = get_coverage(hdf5, sources[interval[rank]:interval[rank+1]], region, blacklist)
-collen = matrix.shape[1]
-## Determine gather parameters
-if rank == 0:
-    recvbuf = np.empty([len(sources), collen], dtype='float64')
-    split_sizes = []
-    for  i in range(len(interval)-1):
-        split_sizes = np.append(split_sizes, interval[i+1]-interval[i])
-    split_sizes_output = split_sizes * collen
-    displacement_output = np.insert(np.cumsum(split_sizes_output), 0, 0)[0:-1]
-else:
-    split_sizes_output = None
-    displacement_output = None
-    recvbuf = None
-## Send average matrix to main processor
-comm.Gatherv(sendbuf=matrix, recvbuf=[recvbuf, split_sizes_output, displacement_output, MPI.DOUBLE], root=0)
-hdf5.close()
+if option.figure:
+    matrix = get_coverage(hdf5, sources[interval[rank]:interval[rank+1]], region, blacklist)
+    collen = matrix.shape[1]
+    ## Determine gather parameters
+    if rank == 0:
+        recvbuf = np.empty([len(sources), collen], dtype='float64')
+        split_sizes = []
+        for  i in range(len(interval)-1):
+            split_sizes = np.append(split_sizes, interval[i+1]-interval[i])
+        split_sizes_output = split_sizes * collen
+        displacement_output = np.insert(np.cumsum(split_sizes_output), 0, 0)[0:-1]
+    else:
+        split_sizes_output = None
+        displacement_output = None
+        recvbuf = None
+    ## Send average matrix to main processor
+    comm.Gatherv(sendbuf=matrix, recvbuf=[recvbuf, split_sizes_output, displacement_output, MPI.DOUBLE], root=0)
+    hdf5.close()
 
-# Write the gathered matrix to output 
-if rank == 0:
-    df_average = pd.DataFrame(recvbuf, index=sources)
-    ## save matrix
-    df_average.to_csv(dirname+'/'+option.prefix+'_average.matrix', header=False, index=True, sep='\t')
-    ## Plot composite plot
-    plt.figure(figsize=(12,12))
-    for index in range(len(sources)):
-        plt.plot(np.arange(collen)-int(collen/2), recvbuf[index, :], label=sources[index])
-    plt.legend(fontsize=15)
-    plt.xlabel("Distance to Midpoint of Region", fontsize=20)
-    plt.ylabel("Average of Coverage Per Region", fontsize=20)
-    plt.title("Composite Plot in %s" %(option.region), fontsize=25, pad=10)
-    plt.tick_params(axis='both', labelsize=15)
-    plt.savefig(dirname+'/'+option.prefix+'_composite.png', dpi=100)
+    # Write the gathered matrix to output 
+    if rank == 0:
+        df_average = pd.DataFrame(recvbuf, index=sources)
+        ## save matrix
+        df_average.to_csv(dirname+'/'+option.prefix+'_average.matrix', header=False, index=True, sep='\t')
+        ## Plot composite plot
+        plt.figure(figsize=(12,12))
+        for index in range(len(sources)):
+            plt.plot(np.arange(collen)-int(collen/2), recvbuf[index, :], label=sources[index])
+        plt.legend(fontsize=15)
+        plt.xlabel("Distance to Midpoint of Region", fontsize=20)
+        plt.ylabel("Average of Coverage Per Region", fontsize=20)
+        plt.title("Composite Plot in %s" %(option.region), fontsize=25, pad=10)
+        plt.tick_params(axis='both', labelsize=15)
+        plt.savefig(dirname+'/'+option.prefix+'_composite.png', dpi=100)
+else:
+    get_coverage(hdf5, sources[interval[rank]:interval[rank+1]], region, blacklist)
 
 
 
