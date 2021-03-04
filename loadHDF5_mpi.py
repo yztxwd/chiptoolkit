@@ -172,7 +172,7 @@ def get_coverage(hdf5, sources, region, blacklist):
             elif option.normalize == 'zscore':
                 plt.imshow(matrix, cmap='hot', interpolation='nearest', aspect='auto', vmin=-1.96, vmax=1.96)
             else:
-                plt.imshow(matrix, cmap='hot', interpolation='nearest', aspect='auto')
+                plt.imshow(np.log(matrix+1), cmap='hot', interpolation='nearest', aspect='auto')
             plt.colorbar()
             plt.axis('off')
             plt.title("Coverage Heatmap\n%s in %s" %(source, option.region), fontsize=25, pad=10)
