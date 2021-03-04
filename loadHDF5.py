@@ -63,8 +63,6 @@ for i in region.index:
             sumRegion += piece
     except:
         error.append(region.loc[i, 'ID'])
-ofile.write("#Error id: ")
-writer.writerow(error)
 ofile.close()
 hdf5.close()
 print("Error ID:\n%s" %(str(error)))
