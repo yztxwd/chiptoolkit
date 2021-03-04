@@ -10,7 +10,23 @@ class CustomHelpFormatter(IndentedHelpFormatter):
     def format_description(self, description):
         return description
 
-description = """
+description = """loadHDF5.py
+
+Load the coverage of sources in the given regions
+
+Example:
+    $ python loadHDF5.py --specie mouse --database cache.h5 --source H3K27me3 
+                                    --region tss.region --prefix test -o ./
+
+Format Requirements:
+    The first 5 columns of region file (1-based):
+        chrom   start   end strand  id
+
+Dependencies:
+    numpy
+    pandas
+
+@Copyright 2019, Jianyu Yang, Southern Medical University
 """
 
 parser  = OptionParser(description= description, formatter = CustomHelpFormatter())
@@ -46,9 +62,7 @@ error = []
 isFirst = True
 
 writer.writerow(["#Source: %s" %(option.source)])
-writer.writerow(["#Extract region: %s" %(option.file)])
-writer.writerow(["#Warning: There will be some regions disgarded because of region index out of bound"])
-writer.writerow(["#Error ID will be listed at the end of file"])
+writer.writerow(["#Region: %s" %(option.file)])
 for i in region.index:
     try:
         piece = hdf5.get_slice(option.source, region.loc[i,'chr'], region.loc[i,'start'], region.loc[i,'end'])
@@ -70,12 +84,8 @@ print("Error ID:\n%s" %(str(error)))
 with open(dirname+'/'+option.prefix+'_sum.csv', 'w') as f:
     writer = csv.writer(f, lineterminator='\n', delimiter='\t')
     writer.writerow(["#Source: %s" %(option.source)])
-    writer.writerow(["#Extract region: %s" %(option.file)])
-    writer.writerow(["#Warning: There will be some regions disgarded because of region index out of bound"])
-    writer.writerow(["#Error ID will be listed at the end of file"])
+    writer.writerow(["#Region: %s" %(option.file)])
     writer.writerow(sumRegion)
-    f.write("#Error id: ")
-    writer.writerow(error)
 
 
 
