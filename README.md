@@ -1,6 +1,6 @@
 # chiptoolkit
 
-Tools for analyzing chip-seq like data
+A collection of scripts for retrieving Genomics coverage and downstream analysis, this project is based on HDF5 to improve performance when working on large numbers of bigwig genomic tracks.
 
 - **dumpHDF5.py**
 
